@@ -100,16 +100,23 @@ function plantmarkers(fig::Figure, ax::Axis, plant::PlantSpecs.Plant, menupoint:
         if event.button == Mouse.left
             if event.action == Mouse.press
                 plt, i = pick(fig, events(fig).mouseposition[], 2)
-                if Keyboard.d in events(fig).keyboardstate && plt == dm.p
-                    # Delete marker
-                    deleteat!(dm.positions[], i)
-                    notify(dm.positions)
-                    return Consume(true)
-                elseif Keyboard.a in events(fig).keyboardstate
-                    # Add marker
+                # if Keyboard.d in events(fig).keyboardstate && plt == dm.p
+                #     # Delete marker
+                #     deleteat!(dm.positions[], i)
+                #     notify(dm.positions)
+                #     return Consume(true)
+                # elseif Keyboard.a in events(fig).keyboardstate
+                #     # Add marker
+                #     push!(positions[], mouseposition(ax))
+                #     notify(dm.positions)
+                #     return Consume(true)
+                if i == 1 && plt == dm.p
+                    # Add marker and drag it immediately
+                    dm.dragging = plt == dm.p
                     push!(positions[], mouseposition(ax))
                     notify(dm.positions)
-                    return Consume(true)
+                    dm.idx = length(positions[])
+                    return Consume(dm.dragging)
                 else
                     # Initiate drag
                     dm.dragging = plt == dm.p
@@ -118,8 +125,16 @@ function plantmarkers(fig::Figure, ax::Axis, plant::PlantSpecs.Plant, menupoint:
                 end
             elseif event.action == Mouse.release
                 # Exit drag
-                dm.dragging = false
-                return Consume(false)
+                if dm.dragging && dm.positions[][dm.idx][2] < 0
+                    # Delete marker
+                    dm.dragging = false
+                    deleteat!(dm.positions[], dm.idx)
+                    notify(dm.positions)
+                    return Consume(true)
+                else
+                    dm.dragging = false
+                    return Consume(false)
+                end
             end
         end
         return Consume(false)
