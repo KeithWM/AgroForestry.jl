@@ -13,7 +13,7 @@ include("PlantSpecs.jl")
 
 function loaddata(filepath::AbstractString)
     df = filepath |> CSV.File |> DataFrame
-    return df[1:3, :]
+    return df[1:24, :]
 end
 
 function showname(plant::PlantSpecs.Plant)
@@ -35,12 +35,22 @@ function makekwargs(plant::PlantSpecs.Plant, scale::Float64)
     )
 end
 
+function arrange(plants::AbstractVector{PlantSpecs.Plant}; n_rows=3::Int)
+    n_cols = (length(plants) + 1) ÷ n_rows
+    map(1:length(plants)) do n
+        i, j = fldmod1(n, n_rows)
+        ii = mod(j, 2) == 1 ? i : n_cols + 1 - i
+        Point2f(ii * 15, -j * 15)
+    end
+end
+
 function createplot(filepath::AbstractString, background::AbstractString, scale::Float64)
     df = loaddata(filepath)
     plants = [
         PlantSpecs.Plant(row)
         for row in eachrow(df)
     ]
+    sort!(plants; by=p -> p.size.width.finish, rev=true)
 
     # fig, ax, p = scatter(Point{2,Float32}[])
     fig = Figure()
@@ -54,9 +64,11 @@ function createplot(filepath::AbstractString, background::AbstractString, scale:
     ax.xrectzoom = false
     ax.yrectzoom = false
 
+    menupoints = arrange(plants)
+
     dms = [
-        plantmarkers(fig, ax, plant, Point2f(0, i), scale)
-        for (i, plant) in enumerate(plants)
+        plantmarkers(fig, ax, plant, menupoint, scale)
+        for (plant, menupoint) in zip(plants, menupoints)
     ]
 
     fig
@@ -81,7 +93,7 @@ function plantmarkers(fig::Figure, ax::Axis, plant::PlantSpecs.Plant, menupoint:
     )
     t = text!(
         positions;
-        text=showname(plant), align=(:center, :center), visible=true, fontsize=6,
+        text=showname(plant), align=(:center, :center), visible=true, fontsize=10,
     )
 
     on(events(fig).mousebutton, priority=2) do event
