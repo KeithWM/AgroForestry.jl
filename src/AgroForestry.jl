@@ -13,7 +13,7 @@ include("PlantSpecs.jl")
 
 function loaddata(filepath::AbstractString)
     df = filepath |> CSV.File |> DataFrame
-    return df[1:24, :]
+    return df[1:6, :]
 end
 
 function showname(plant::PlantSpecs.Plant)
@@ -74,62 +74,64 @@ function createplot(filepath::AbstractString, background::AbstractString, scale:
     fig
 end
 
-Base.@kwdef mutable struct DraggableMarkers2
+Base.@kwdef mutable struct DraggableMarkers1
     positions::Observable{Vector{Point{2,Float32}}}
-    p::Plot
+    ps::Vector{Plot}
     idx::Int
     dragging::Bool
 end
 
 function plantmarkers(fig::Figure, ax::Axis, plant::PlantSpecs.Plant, menupoint::Point2f, scale::Float64)
     positions = Observable([menupoint])
-    dm = DraggableMarkers2(
+    dm = DraggableMarkers1(
         positions=positions,
-        p=scatter!(
-            positions; markerspace=:data, makekwargs(plant, scale)...
-        ),
+        ps=[
+            scatter!(
+                positions; markerspace=:data, makekwargs(plant, scale)...
+            ),
+            text!(
+                positions;
+                text=[showname(plant)], align=(:center, :center), visible=true, fontsize=10,
+            ),
+        ],
         idx=0,
         dragging=false,
     )
-    t = text!(
-        positions;
-        text=showname(plant), align=(:center, :center), visible=true, fontsize=10,
-    )
+
+    # @show menupoint
+    # @show pick(fig, menupoint)
+    # @show Makie.pick_sorted(Makie.get_scene(fig), Point2f(30, -30), 400)
 
     on(events(fig).mousebutton, priority=2) do event
         if event.button == Mouse.left
             if event.action == Mouse.press
-                plt, i = pick(fig, events(fig).mouseposition[], 2)
-                # if Keyboard.d in events(fig).keyboardstate && plt == dm.p
-                #     # Delete marker
-                #     deleteat!(dm.positions[], i)
-                #     notify(dm.positions)
-                #     return Consume(true)
-                # elseif Keyboard.a in events(fig).keyboardstate
-                #     # Add marker
-                #     push!(positions[], mouseposition(ax))
-                #     notify(dm.positions)
-                #     return Consume(true)
-                if i == 1 && plt == dm.p
+                plt, i = pick(fig, events(fig).mouseposition[], 10)
+                if i == 1 && plt in dm.ps
                     # Add marker and drag it immediately
-                    dm.dragging = plt == dm.p
+                    dm.dragging = plt in dm.ps
                     push!(positions[], mouseposition(ax))
+                    push!(dm.ps[2].text[], dm.ps[2].text[][1])
                     notify(dm.positions)
+                    notify(dm.ps[2].text)
+                    @show dm.ps[2].text[]
                     dm.idx = length(positions[])
                     return Consume(dm.dragging)
                 else
                     # Initiate drag
-                    dm.dragging = plt == dm.p
+                    dm.dragging = plt in dm.ps
                     dm.idx = i
                     return Consume(dm.dragging)
                 end
             elseif event.action == Mouse.release
                 # Exit drag
+                @show dm.dragging && dm.positions[][dm.idx][2] < 0
                 if dm.dragging && dm.positions[][dm.idx][2] < 0
                     # Delete marker
                     dm.dragging = false
                     deleteat!(dm.positions[], dm.idx)
+                    deleteat!(dm.ps[2].text[], dm.idx)
                     notify(dm.positions)
+                    notify(dm.ps[2].text)
                     return Consume(true)
                 else
                     dm.dragging = false
