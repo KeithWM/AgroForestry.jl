@@ -103,47 +103,12 @@ function plantmarkers(fig::Figure, ax::Axis, plant::PlantSpecs.Plant, menupoint:
         dragging=false,
     )
 
-
-
     on(events(fig).mousebutton, priority=2) do event
         if event.button == Mouse.left
             if event.action == Mouse.press
-                plt, i = pick(fig, events(fig).mouseposition[], 10)
-                xs = Makie.pick_sorted(Makie.get_scene(fig), events(fig).mouseposition[], 10)
-                found = findfirst(plti -> isa(first(plti), Scatter), xs)
-                if !isnothing(found)
-                    plt, i = xs[found]
-
-                    if i == 1 && plt in dm.ps
-                        # Add marker and drag it immediately
-                        dm.dragging = plt in dm.ps
-                        push!(positions[], mouseposition(ax))
-                        push!(dm.ps[2].text[], dm.ps[2].text[][1])
-                        notify(dm.positions)
-                        notify(dm.ps[2].text)
-                        dm.idx = length(positions[])
-                        return Consume(dm.dragging)
-                    else
-                        # Initiate drag
-                        dm.dragging = plt in dm.ps
-                        dm.idx = i
-                        return Consume(dm.dragging)
-                    end
-                end
+                return handlepress(fig, ax, positions, dm)
             elseif event.action == Mouse.release
-                # Exit drag
-                if dm.dragging && dm.positions[][dm.idx][2] < 0
-                    # Delete marker
-                    dm.dragging = false
-                    deleteat!(dm.positions[], dm.idx)
-                    deleteat!(dm.ps[2].text[], dm.idx)
-                    notify(dm.positions)
-                    notify(dm.ps[2].text)
-                    return Consume(true)
-                else
-                    dm.dragging = false
-                    return Consume(false)
-                end
+                return handlerelease(fig, ax, positions, dm)
             end
         end
         return Consume(false)
@@ -159,6 +124,47 @@ function plantmarkers(fig::Figure, ax::Axis, plant::PlantSpecs.Plant, menupoint:
     end
 
     return dm
+end
+
+function handlerelease(fig::Figure, ax::Axis, positions::Observable, dm::DraggableMarkers1)
+    # Exit drag
+    if dm.dragging && dm.positions[][dm.idx][2] < 0
+        # Delete marker
+        dm.dragging = false
+        deleteat!(dm.positions[], dm.idx)
+        deleteat!(dm.ps[2].text[], dm.idx)
+        notify(dm.positions)
+        notify(dm.ps[2].text)
+        return Consume(true)
+    else
+        dm.dragging = false
+        return Consume(false)
+    end
+end
+
+function handlepress(fig::Figure, ax::Axis, positions::Observable, dm::DraggableMarkers1)
+    plt, i = pick(fig, events(fig).mouseposition[], 10)
+    xs = Makie.pick_sorted(Makie.get_scene(fig), events(fig).mouseposition[], 10)
+    found = findfirst(plti -> isa(first(plti), Scatter), xs)
+    if !isnothing(found)
+        plt, i = xs[found]
+
+        if i == 1 && plt in dm.ps
+            # Add marker and drag it immediately
+            dm.dragging = plt in dm.ps
+            push!(positions[], mouseposition(ax))
+            push!(dm.ps[2].text[], dm.ps[2].text[][1])
+            notify(dm.positions)
+            notify(dm.ps[2].text)
+            dm.idx = length(positions[])
+            return Consume(dm.dragging)
+        else
+            # Initiate drag
+            dm.dragging = plt in dm.ps
+            dm.idx = i
+            return Consume(dm.dragging)
+        end
+    end
 end
 
 end # module AgroForestry
