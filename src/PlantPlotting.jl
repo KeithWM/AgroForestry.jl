@@ -8,19 +8,17 @@ end
 function color(m::PlantSpecs.MonthRange)
     return color(m.start, m.finish)
 end
-color(s::Int, f::Int) = Makie.Colors.HSV((s + f) * 15, 0.8, 0.8)
-color(::Missing, ::Missing) = Makie.Colors.HSV(0, 0, 0)
+color(s::Int, f::Int) = Makie.Colors.HSV(80 + (s + f) * 3, 0.5, 0.5)
+color(::Missing, ::Missing) = Makie.Colors.HSV(100, 0.5, 0.8)
 mean(sr::PlantSpecs.SizeRange) = (sr.start + sr.finish) / 2
 
 function makekwargs(plant::PlantSpecs.Plant)
     return Dict(
         :marker => makeshape(plant),
-        :color => color(plant.flowering),
+        :color => color(plant.harvest),
         :strokewidth => mean(plant.size.height) / 10,
-        :strokecolor => color(plant.harvest),
+        :strokecolor => GLOWCOLORS[plant.sun],
         :markersize => mean(plant.size.width),
-        :glowcolor => GLOWCOLORS[plant.sun],
-        :glowwidth => 5,
     )
 end
 
