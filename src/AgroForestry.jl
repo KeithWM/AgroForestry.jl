@@ -6,11 +6,14 @@ using Makie.Colors
 using DataFrames
 using FileIO: load
 import Base.convert
+using DataFrames: DataFrame
+import Tables
 
 export createplot
 
 include("PlantSpecs.jl")
 include("PlantPlotting.jl")
+include("TablesInterface.jl")
 
 function loaddata(filepath::AbstractString)
     df = filepath |> CSV.File |> DataFrame
@@ -70,7 +73,12 @@ end
 
 function plantmarkers(fig::Figure, ax::Axis, plant::PlantSpecs.Plant, menupoint::Point2f)
     positions = Observable([menupoint])
-    dm = DraggableMarkers1(
+    dm = createmarkers(plant, positions)
+    plantmarkers(fig, ax, dm, positions)
+end
+
+function createmarkers(plant::PlantSpecs.Plant, positions::Observable)
+    return DraggableMarkers1(
         positions=positions,
         ps=[
             scatter!(
@@ -78,13 +86,12 @@ function plantmarkers(fig::Figure, ax::Axis, plant::PlantSpecs.Plant, menupoint:
             ),
             text!(
                 positions;
-                text=[showname(plant)], align=(:center, :center), visible=true, fontsize=10,
+                text=[showname(plant) for _ in positions[]], align=(:center, :center), visible=true, fontsize=10,
             ),
         ],
         idx=0,
         dragging=false,
     )
-    plantmarkers(fig, ax, dm, positions)
 end
 
 function plantmarkers(fig::Figure, ax::Axis, dm::DraggableMarkers1, positions::Observable)
