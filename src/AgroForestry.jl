@@ -49,17 +49,16 @@ function createplot(filepath::AbstractString, background::AbstractString, scale:
 
     menupoints = arrange(plants)
 
-    dms = [
-        plantmarkers(fig, ax, plant, menupoint, scale)
+    dms = Dict(
+        plant.name => plantmarkers(fig, ax, plant, menupoint)
         for (plant, menupoint) in zip(plants, menupoints)
-    ]
+    )
 
     @show xs = Makie.pick_sorted(Makie.get_scene(fig), menupoints[2], 10)
     for x in xs
         @show x |> typeof
     end
-    dms
-    return fig
+    return fig, dms
 end
 
 Base.@kwdef mutable struct DraggableMarkers1
@@ -69,7 +68,7 @@ Base.@kwdef mutable struct DraggableMarkers1
     dragging::Bool
 end
 
-function plantmarkers(fig::Figure, ax::Axis, plant::PlantSpecs.Plant, menupoint::Point2f, scale::Float64)
+function plantmarkers(fig::Figure, ax::Axis, plant::PlantSpecs.Plant, menupoint::Point2f)
     positions = Observable([menupoint])
     dm = DraggableMarkers1(
         positions=positions,
@@ -85,7 +84,10 @@ function plantmarkers(fig::Figure, ax::Axis, plant::PlantSpecs.Plant, menupoint:
         idx=0,
         dragging=false,
     )
+    plantmarkers(fig, ax, dm, positions)
+end
 
+function plantmarkers(fig::Figure, ax::Axis, dm::DraggableMarkers1, positions::Observable)
     on(events(fig).mousebutton, priority=2) do event
         if event.button == Mouse.left
             if event.action == Mouse.press
