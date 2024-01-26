@@ -7,19 +7,38 @@ using DataFrames
 using FileIO: load
 import Base.convert
 using DataFrames: DataFrame
+using ConcreteStructs: @concrete
 import Tables
 
 export createplot
 
 include("PlantSpecs.jl")
+
+left(x::Pair) = first(x)
+right(x::Pair) = last(x)
+
+Base.@kwdef mutable struct DraggableMarkers
+    name::String
+    positions::Observable{Vector{Point{2,Float32}}}
+    ps::Vector{Plot}
+    idx::Int
+    dragging::Bool
+end
+
+Base.@kwdef @concrete mutable struct AgroForest3
+    img::Matrix{<:ColorTypes.RGBA{<:Any}}
+    scale::Float64
+    plants::Vector{PlantSpecs.Plant}
+    positions::Vector{Pair{String,Observable{Vector{Point{2,Float32}}}}}
+end
+
 include("PlantPlotting.jl")
-include("TablesInterface.jl")
+# include("TablesInterface.jl")
 
 function loaddata(filepath::AbstractString)
     df = filepath |> CSV.File |> DataFrame
     return df[1:24, :]
 end
-
 
 function arrange(plants::AbstractVector{PlantSpecs.Plant}; n_rows=3::Int)
     n = length(plants)
@@ -37,48 +56,42 @@ function createplot(filepath::AbstractString, background::AbstractString, scale:
         for row in eachrow(df)
     ]
     sort!(plants; by=p -> p.size.width.finish, rev=true)
-
-    # fig, ax, p = scatter(Point{2,Float32}[])
-    fig = Figure()
     img = load(background)
+    menupoints = arrange(plants)
+
+    forest = AgroForest3(
+        img=img,
+        scale=scale,
+        plants=plants,
+        positions=[plant.name => [p] for (plant, p) in zip(plants, menupoints)]
+    )
+
+    fig = Figure()
     ax, _img = image(
         fig[1, 1], rotr90(img),
         axis=(aspect=DataAspect(),)
     )
-    scale!(_img, scale, scale)
-    limits!(ax, (0, size(img, 2) * scale), (-50, size(img, 1) * scale))
+    scale!(_img, forest.scale, forest.scale)
+    limits!(ax, (0, size(img, 2) * forest.scale), (-50, size(img, 1) * forest.scale))
     ax.xrectzoom = false
     ax.yrectzoom = false
 
-    menupoints = arrange(plants)
-
     dms = Dict(
-        plant.name => plantmarkers(fig, ax, plant, menupoint)
-        for (plant, menupoint) in zip(plants, menupoints)
+        plant.name => plantmarkers(fig, ax, plant, right(poss))
+        for (plant, poss) in zip(forest.plants, forest.positions)
     )
 
-    @show xs = Makie.pick_sorted(Makie.get_scene(fig), menupoints[2], 10)
-    for x in xs
-        @show x |> typeof
-    end
     return fig, dms
 end
 
-Base.@kwdef mutable struct DraggableMarkers1
-    positions::Observable{Vector{Point{2,Float32}}}
-    ps::Vector{Plot}
-    idx::Int
-    dragging::Bool
-end
-
-function plantmarkers(fig::Figure, ax::Axis, plant::PlantSpecs.Plant, menupoint::Point2f)
-    positions = Observable([menupoint])
-    dm = createmarkers(plant, positions)
-    plantmarkers(fig, ax, dm, positions)
+function plantmarkers(fig::Figure, ax::Axis, plant::PlantSpecs.Plant, poss::Observable)
+    dm = createmarkers(plant, poss)
+    plantmarkers(fig, ax, dm)
 end
 
 function createmarkers(plant::PlantSpecs.Plant, positions::Observable)
-    return DraggableMarkers1(
+    return DraggableMarkers(
+        name=plant.name,
         positions=positions,
         ps=[
             scatter!(
@@ -94,13 +107,13 @@ function createmarkers(plant::PlantSpecs.Plant, positions::Observable)
     )
 end
 
-function plantmarkers(fig::Figure, ax::Axis, dm::DraggableMarkers1, positions::Observable)
+function plantmarkers(fig::Figure, ax::Axis, dm::DraggableMarkers)
     on(events(fig).mousebutton, priority=2) do event
         if event.button == Mouse.left
             if event.action == Mouse.press
-                return handlepress(fig, ax, positions, dm)
+                return handlepress(fig, ax, dm)
             elseif event.action == Mouse.release
-                return handlerelease(fig, ax, positions, dm)
+                return handlerelease(fig, ax, dm)
             end
         end
         return Consume(false)
@@ -118,7 +131,7 @@ function plantmarkers(fig::Figure, ax::Axis, dm::DraggableMarkers1, positions::O
     return dm
 end
 
-function handlerelease(fig::Figure, ax::Axis, positions::Observable, dm::DraggableMarkers1)
+function handlerelease(fig::Figure, ax::Axis, dm::DraggableMarkers)
     # Exit drag
     if dm.dragging && dm.positions[][dm.idx][2] < 0
         # Delete marker
@@ -134,7 +147,7 @@ function handlerelease(fig::Figure, ax::Axis, positions::Observable, dm::Draggab
     end
 end
 
-function handlepress(fig::Figure, ax::Axis, positions::Observable, dm::DraggableMarkers1)
+function handlepress(fig::Figure, ax::Axis, dm::DraggableMarkers)
     plt, i = pick(fig, events(fig).mouseposition[], 10)
     xs = Makie.pick_sorted(Makie.get_scene(fig), events(fig).mouseposition[], 10)
     found = findfirst(plti -> isa(first(plti), Scatter), xs)
@@ -144,11 +157,11 @@ function handlepress(fig::Figure, ax::Axis, positions::Observable, dm::Draggable
         if i == 1 && plt in dm.ps
             # Add marker and drag it immediately
             dm.dragging = plt in dm.ps
-            push!(positions[], mouseposition(ax))
+            push!(dm.positions[], mouseposition(ax))
             push!(dm.ps[2].text[], dm.ps[2].text[][1])
             notify(dm.positions)
             notify(dm.ps[2].text)
-            dm.idx = length(positions[])
+            dm.idx = length(dm.positions[])
             return Consume(dm.dragging)
         else
             # Initiate drag
