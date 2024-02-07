@@ -1,4 +1,4 @@
-function save(forest::AgroForest3, output::AbstractString)
+function save(forest::AgroForest5, output::AbstractString)
     position_points = Dict(
         plant_name => positions[]
         for (plant_name, positions) in forest.positions
@@ -11,14 +11,14 @@ function save(forest::AgroForest3, output::AbstractString)
     )
 end
 
-function loadforest(forest::AgroForest3, input::AbstractString)
+function loadforest(forest::AgroForest5, input::AbstractString)
     jldopen(input, "r") do f
         @show f["position_points"]
         forest.img[] = f["img"]
         forest.scale[] = f["scale"]
         forest.plants = f["plants"]
         for (plant_name, points) in f["position_points"]
-            forest.points[plant_name] = points
+            forest.positions[plant_name][] = points
         end
     end
 end

@@ -3,7 +3,9 @@ module AgroForestry
 import CSV
 using GLMakie
 using Makie.Colors
+using Makie.MakieCore: Text
 using DataFrames
+using JLD2: jldsave, jldopen
 using FileIO: load
 import Base.convert
 using DataFrames: DataFrame
@@ -12,32 +14,27 @@ import Tables
 
 export createplot
 
-include("PlantSpecs.jl")
-
 left(x::Pair) = first(x)
 right(x::Pair) = last(x)
 
-Base.@kwdef mutable struct DraggableMarkers
-    name::String
-    positions::Observable{Vector{Point{2,Float32}}}
-    ps::Vector{Plot}
-    idx::Int
-    dragging::Bool
-end
+include("PlantSpecs.jl")
 
-Base.@kwdef @concrete mutable struct AgroForest3
-    img::Matrix{<:ColorTypes.RGBA{<:Any}}
-    scale::Float64
+Base.@kwdef @concrete mutable struct AgroForest5
+    img::Observable{Matrix}
+    scale::Observable{Float64}
     plants::Vector{PlantSpecs.Plant}
-    positions::Vector{Pair{String,Observable{Vector{Point{2,Float32}}}}}
+    positions::Dict{String,Observable{Vector{Point{2,Float32}}}}
 end
 
 include("PlantPlotting.jl")
-# include("TablesInterface.jl")
+include("MainPlot.jl")
+include("Buttons.jl")
+include("TablesInterface.jl")
+include("FileIO.jl")
 
 function loaddata(filepath::AbstractString)
     df = filepath |> CSV.File |> DataFrame
-    return df[1:24, :]
+    return df[1:findfirst(ismissing.(df[!, :Naam]))-1, :]
 end
 
 function arrange(plants::AbstractVector{PlantSpecs.Plant}; n_rows=3::Int)
@@ -57,119 +54,41 @@ function createplot(filepath::AbstractString, background::AbstractString, scale:
     ]
     sort!(plants; by=p -> p.size.width.finish, rev=true)
     img = load(background)
-    menupoints = arrange(plants)
-
-    forest = AgroForest3(
-        img=img,
-        scale=scale,
-        plants=plants,
-        positions=[plant.name => [p] for (plant, p) in zip(plants, menupoints)]
+    points = Dict(
+        plant.name => [position]
+        for (plant, position) in zip(plants, arrange(plants))
     )
 
-    fig = Figure()
+    createplot(img, scale, plants, points)
+end
+
+function createplot(img::Matrix, scale::Number, plants::Vector{PlantSpecs.Plant}, points::Dict{String,<:Vector})
+    @show points
+    forest = AgroForest5(
+        img=Observable{}(img),
+        scale=Observable{}(scale),
+        plants=plants,
+        positions=points
+    )
+    fig = Figure(; size=(1200, 675))
     ax, _img = image(
-        fig[1, 1], rotr90(img),
+        fig[1, 1], rotr90(forest.img[]),
         axis=(aspect=DataAspect(),)
     )
-    scale!(_img, forest.scale, forest.scale)
-    limits!(ax, (0, size(img, 2) * forest.scale), (-50, size(img, 1) * forest.scale))
+    # fig[1, 2] = buttongrid = GridLayout(width=15)
+    fig[1, 2] = buttongrid = GridLayout(tellheight=false)
+    scale!(_img, forest.scale[], forest.scale[])
+    limits!(ax, (0, size(forest.img[], 2) * forest.scale[]), (-50, size(forest.img[], 1) * forest.scale[]))
     ax.xrectzoom = false
     ax.yrectzoom = false
 
     dms = Dict(
-        plant.name => plantmarkers(fig, ax, plant, right(poss))
-        for (plant, poss) in zip(forest.plants, forest.positions)
+        plant.name => plantmarkers(fig, ax, plant, forest.positions[plant.name])
+        for plant in forest.plants
     )
+    buttons = makebuttons(forest, buttongrid)
 
-    return fig, dms
-end
-
-function plantmarkers(fig::Figure, ax::Axis, plant::PlantSpecs.Plant, poss::Observable)
-    dm = createmarkers(plant, poss)
-    plantmarkers(fig, ax, dm)
-end
-
-function createmarkers(plant::PlantSpecs.Plant, positions::Observable)
-    return DraggableMarkers(
-        name=plant.name,
-        positions=positions,
-        ps=[
-            scatter!(
-                positions; markerspace=:data, makekwargs(plant)...
-            ),
-            text!(
-                positions;
-                text=[showname(plant) for _ in positions[]], align=(:center, :center), visible=true, fontsize=10,
-            ),
-        ],
-        idx=0,
-        dragging=false,
-    )
-end
-
-function plantmarkers(fig::Figure, ax::Axis, dm::DraggableMarkers)
-    on(events(fig).mousebutton, priority=2) do event
-        if event.button == Mouse.left
-            if event.action == Mouse.press
-                return handlepress(fig, ax, dm)
-            elseif event.action == Mouse.release
-                return handlerelease(fig, ax, dm)
-            end
-        end
-        return Consume(false)
-    end
-
-    on(events(fig).mouseposition, priority=2) do mp
-        if dm.dragging
-            dm.positions[][dm.idx] = mouseposition(ax)
-            notify(dm.positions)
-            return Consume(true)
-        end
-        return Consume(false)
-    end
-
-    return dm
-end
-
-function handlerelease(fig::Figure, ax::Axis, dm::DraggableMarkers)
-    # Exit drag
-    if dm.dragging && dm.positions[][dm.idx][2] < 0
-        # Delete marker
-        dm.dragging = false
-        deleteat!(dm.positions[], dm.idx)
-        deleteat!(dm.ps[2].text[], dm.idx)
-        notify(dm.positions)
-        notify(dm.ps[2].text)
-        return Consume(true)
-    else
-        dm.dragging = false
-        return Consume(false)
-    end
-end
-
-function handlepress(fig::Figure, ax::Axis, dm::DraggableMarkers)
-    plt, i = pick(fig, events(fig).mouseposition[], 10)
-    xs = Makie.pick_sorted(Makie.get_scene(fig), events(fig).mouseposition[], 10)
-    found = findfirst(plti -> isa(first(plti), Scatter), xs)
-    if !isnothing(found)
-        plt, i = xs[found]
-
-        if i == 1 && plt in dm.ps
-            # Add marker and drag it immediately
-            dm.dragging = plt in dm.ps
-            push!(dm.positions[], mouseposition(ax))
-            push!(dm.ps[2].text[], dm.ps[2].text[][1])
-            notify(dm.positions)
-            notify(dm.ps[2].text)
-            dm.idx = length(dm.positions[])
-            return Consume(dm.dragging)
-        else
-            # Initiate drag
-            dm.dragging = plt in dm.ps
-            dm.idx = i
-            return Consume(dm.dragging)
-        end
-    end
+    return fig, forest
 end
 
 end # module AgroForestry
