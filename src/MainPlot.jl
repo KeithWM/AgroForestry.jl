@@ -15,7 +15,7 @@ end
 
 function linkcontroller(plant::PlantSpecs.Plant, forest::AgroForest2)
     cps = map(x -> x / u"m", forest.positions[plant.name])
-    forest.positions[plant.name] = lift(x -> x * u"m", cps)
+    notify(cps)
     controller = Controller(
         name=plant.name,
         positions=cps,
@@ -23,6 +23,7 @@ function linkcontroller(plant::PlantSpecs.Plant, forest::AgroForest2)
         dragging=false,
         offset=Point2f(0, 0),
     )
+    forest.positions[plant.name] = lift(x -> x * u"m", controller.positions)
     return controller
 end
 
@@ -69,6 +70,7 @@ function handlerelease(fig::Figure, ax::Axis, dm::Controller)
     # Exit drag
     if dm.dragging && dm.positions[][dm.idx][2] < 0
         # Delete marker
+        @debug "Delete marker"
         dm.dragging = false
         deleteat!(dm.positions[], dm.idx)
         notify(dm.positions)
