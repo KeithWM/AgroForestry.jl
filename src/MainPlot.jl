@@ -14,20 +14,11 @@ Base.@kwdef mutable struct Viewer
 end
 
 function linkcontroller(plant::PlantSpecs.Plant, forest::AgroForest2)
-    points = map(x -> x / u"m", positions)
+    cps = map(x -> x / u"m", forest.positions[plant.name])
+    forest.positions[plant.name] = lift(x -> x * u"m", cps)
     controller = Controller(
         name=plant.name,
-        positions=points,
-        ps=[
-            scatter!(
-                lift(points); markerspace=:data, makekwargs(plant)...
-            ),
-            text!(
-                lift(points);
-                text=lift(p -> [showname(plant) for _ in p], points),
-                align=(:center, :center), visible=true, fontsize=20,
-            ),
-        ],
+        positions=cps,
         idx=0,
         dragging=false,
         offset=Point2f(0, 0),
@@ -35,11 +26,26 @@ function linkcontroller(plant::PlantSpecs.Plant, forest::AgroForest2)
     return controller
 end
 
-function plantmarkers(fig::Figure, ax::Axis, dm::Controller)
+function createviewer(forest::AgroForest2, fig::Figure, ax::Axis, dm::Controller, plant::PlantSpecs.Plant)
+    points = lift(x -> x / u"m", forest.positions[dm.name])
+    viewer = Viewer(
+        name=dm.name,
+        ps=[
+            scatter!(
+                points; markerspace=:data, makekwargs(plant)...
+            ),
+            text!(
+                points;
+                text=lift(p -> [showname(plant) for _ in p], points),
+                align=(:center, :center), visible=true, fontsize=20,
+            ),
+        ],
+    )
+
     on(events(fig).mousebutton, priority=2) do event
         if event.button == Mouse.left
             if event.action == Mouse.press
-                return handlepress(fig, ax, dm)
+                return handlepress(fig, ax, dm, viewer)
             elseif event.action == Mouse.release
                 return handlerelease(fig, ax, dm)
             end
@@ -56,7 +62,7 @@ function plantmarkers(fig::Figure, ax::Axis, dm::Controller)
         return Consume(false)
     end
 
-    return dm
+    return viewer
 end
 
 function handlerelease(fig::Figure, ax::Axis, dm::Controller)
@@ -73,33 +79,33 @@ function handlerelease(fig::Figure, ax::Axis, dm::Controller)
     end
 end
 
-function handlepress(fig::Figure, ax::Axis, dm::Controller)
+function handlepress(fig::Figure, ax::Axis, dm::Controller, v::Viewer)
     plt, i = pick(fig, events(fig).mouseposition[], 10)
     for plt_i in Makie.pick_sorted(Makie.get_scene(fig), events(fig).mouseposition[], 10)
-        r = handlepress(fig, ax, dm, plt_i...)
+        r = handlepress(ax, dm, v, plt_i...)
         r === nothing || return r
         @debug "Found nothing"
     end
 end
-handlepress(fig::Figure, ax::Axis, dm::Controller, plt::Any, i::Integer) = nothing
-handlepress(fig::Figure, ax::Axis, dm::Controller, plt::Text, i::Integer) = nothing
+handlepress(ax::Axis, dm::Controller, v::Viewer, plt::Any, i::Integer) = nothing
+handlepress(ax::Axis, dm::Controller, v::Viewer, plt::Text, i::Integer) = nothing
 
-function handlepress(fig::Figure, ax::Axis, dm::Controller, plt::DraggablePlot, i::Integer)
-    if i == 1 && plt in dm.ps
+function handlepress(ax::Axis, dm::Controller, v::Viewer, plt::DraggablePlot, i::Integer)
+    if i == 1 && plt in v.ps
         @debug "Add marker and drag it immediately"
         # Add marker and drag it immediately
-        dm.dragging = plt in dm.ps
+        dm.dragging = plt in v.ps
         dm.offset = Point2f(0, 0)
         push!(dm.positions[], mouseposition(ax))
         notify(dm.positions)
         dm.idx = length(dm.positions[])
         @show dm.positions
-        @show dm.ps[1].positions
+        @show v.ps[1].positions
         return Consume(dm.dragging)
     else
         @debug "Initiate drag"
         # Initiate drag
-        dm.dragging = plt in dm.ps
+        dm.dragging = plt in v.ps
         if dm.dragging
             dm.offset = mouseposition(ax) - dm.positions[][i]
         end

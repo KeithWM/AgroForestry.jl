@@ -62,21 +62,20 @@ function createplot(filepath::AbstractString, background::AbstractString, scale:
     ]
     sort!(plants; by=p -> p.size.width.finish, rev=true)
     img = load(background)
-    points = Dict(
-        plant.name => Observable([position * u"1.0m"])
-        for (plant, position) in zip(plants, arrange(plants))
-    )
 
-    createplot(img, scale, plants, points)
+    createplot(img, scale, plants)
 end
 
-function createplot(img::Matrix, scale::MeterType, plants::Vector{PlantSpecs.Plant}, points::Dict{String,<:Observable})
-    @show scale |> typeof
+function createplot(img::Matrix, scale::MeterType, plants::Vector{PlantSpecs.Plant})
+    positions = Dict(
+        plant.name => Observable([position * u"m"])
+        for (plant, position) in zip(plants, arrange(plants))
+    )
     forest = AgroForest2(
         img=Observable{}(img),
         scale=Observable{}(scale),
         plants=plants,
-        positions=points
+        positions=positions,
     )
     fig = Figure(; size=(1200, 675))
     ax, _img = image(
@@ -90,13 +89,17 @@ function createplot(img::Matrix, scale::MeterType, plants::Vector{PlantSpecs.Pla
     ax.xrectzoom = false
     ax.yrectzoom = false
 
-    dms = Dict(
-        plant.name => plantmarkers(fig, ax, plant, forest.positions[plant.name])
+    controllers = Dict(
+        plant.name => linkcontroller(plant, forest)
+        for plant in forest.plants
+    )
+    viewers = Dict(
+        plant.name => createviewer(forest, fig, ax, controllers[plant.name], plant)
         for plant in forest.plants
     )
     buttons = makebuttons(forest, buttongrid)
 
-    return fig, forest, dms, buttons
+    return fig, forest, controllers, viewers, buttons
 end
 
 end # module AgroForestry
