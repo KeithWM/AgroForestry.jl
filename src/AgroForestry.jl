@@ -77,7 +77,7 @@ function createplot(img::Matrix, scale::MeterType, plants::Vector{PlantSpecs.Pla
         plants=plants,
         positions=positions,
     )
-    fig = Figure(; size=(1200, 675))
+    fig = Figure(; size=(1200, 675) ./ 2)
     ax, _img = image(
         fig[1, 1], rotr90(forest.img[]),
         axis=(aspect=DataAspect(),)
@@ -90,14 +90,14 @@ function createplot(img::Matrix, scale::MeterType, plants::Vector{PlantSpecs.Pla
     ax.yrectzoom = false
 
     controllers = Dict(
-        plant.name => linkcontroller(plant, forest)
+        plant.name => linkcontroller!(forest, plant.name)
         for plant in forest.plants
     )
     viewers = Dict(
         plant.name => createviewer(forest, fig, ax, controllers[plant.name], plant)
         for plant in forest.plants
     )
-    buttons = makebuttons(forest, buttongrid)
+    buttons = makebuttons(forest, controllers, buttongrid)
 
     return fig, forest, controllers, viewers, buttons
 end

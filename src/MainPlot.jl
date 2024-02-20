@@ -13,18 +13,23 @@ Base.@kwdef mutable struct Viewer
     ps::Vector{Plot}
 end
 
-function linkcontroller(plant::PlantSpecs.Plant, forest::AgroForest2)
-    cps = map(x -> x / u"m", forest.positions[plant.name])
-    notify(cps)
+function linkcontroller!(forest::AgroForest2, plant_name::String)
     controller = Controller(
-        name=plant.name,
-        positions=cps,
+        name=plant_name,
+        positions=Observable(Point2f[]),
         idx=0,
         dragging=false,
         offset=Point2f(0, 0),
     )
-    forest.positions[plant.name] = lift(x -> x * u"m", controller.positions)
+    linkcontroller!!(forest, controller, plant_name)
     return controller
+end
+
+function linkcontroller!!(forest::AgroForest2, controller::Controller, plant_name::String)
+    empty!(controller.positions[])
+    controller.positions[] = map(x -> x / u"m", forest.positions[plant_name][])
+    forest.positions[plant_name] = lift(x -> x * u"m", controller.positions)
+    return forest
 end
 
 function createviewer(forest::AgroForest2, fig::Figure, ax::Axis, dm::Controller, plant::PlantSpecs.Plant)

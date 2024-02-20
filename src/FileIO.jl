@@ -11,14 +11,18 @@ function save(forest::AgroForest2, output::AbstractString)
     )
 end
 
-function loadforest(forest::AgroForest2, input::AbstractString)
+function loadforest(forest::AgroForest2, controllers::Dict{String,Controller}, input::AbstractString)
     jldopen(input, "r") do f
-        @show f["position_points"]
         forest.img[] = f["img"]
         forest.scale[] = f["scale"]
         forest.plants = f["plants"]
         for (plant_name, points) in f["position_points"]
             forest.positions[plant_name][] = points
         end
+        @show forest.positions["Rode Beuk"][]
     end
+    for (plant_name, controller) in controllers
+        linkcontroller!!(forest, controller, plant_name)
+    end
+    @show controllers["Rode Beuk"].positions
 end

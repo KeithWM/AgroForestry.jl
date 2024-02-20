@@ -1,4 +1,4 @@
-function makebuttons(forest, buttongrid)
+function makebuttons(forest::AgroForest2, controllers::Dict{String,Controller}, buttongrid)
     # buttonlabels = ["Save", "Load"]
     # n = buttonlabels |> length
     # buttons = buttongrid[1:2, 1:2] = [
@@ -25,7 +25,7 @@ function makebuttons(forest, buttongrid)
         save(forest, savefile[])
     end
     on(buttons["loadbutton"].clicks) do n
-        loadforest(forest, loadfile[])
+        loadforest(forest, controllers, loadfile[])
     end
     # for i in 1:n
     #     on(buttons[i].clicks) do n
