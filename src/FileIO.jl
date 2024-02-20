@@ -1,4 +1,4 @@
-function save(forest::AgroForest5, output::AbstractString)
+function save(forest::AgroForest2, output::AbstractString)
     position_points = Dict(
         plant_name => positions[]
         for (plant_name, positions) in forest.positions
@@ -11,7 +11,7 @@ function save(forest::AgroForest5, output::AbstractString)
     )
 end
 
-function loadforest(forest::AgroForest5, input::AbstractString)
+function loadforest(forest::AgroForest2, input::AbstractString)
     jldopen(input, "r") do f
         @show f["position_points"]
         forest.img[] = f["img"]

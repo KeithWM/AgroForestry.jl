@@ -10,6 +10,8 @@ using FileIO: load
 import Base.convert
 using DataFrames: DataFrame
 using ConcreteStructs: @concrete
+using Unitful: Quantity, 𝐋, FreeUnits, m, @u_str
+using UnitfulAngles: °
 import Tables
 
 export createplot
@@ -17,19 +19,21 @@ export createplot
 left(x::Pair) = first(x)
 right(x::Pair) = last(x)
 
+MeterType = Quantity{Float64,𝐋}
+
 include("PlantSpecs.jl")
 
-Base.@kwdef @concrete mutable struct AgroForest5
+Base.@kwdef @concrete mutable struct AgroForest2
     img::Observable{Matrix}
-    scale::Observable{Float64}
+    scale::Observable{MeterType}
     plants::Vector{PlantSpecs.Plant}
-    positions::Dict{String,Observable{Vector{Point{2,Float32}}}}
+    positions::Dict{String,Observable{Vector{Point{2,MeterType}}}}
 end
 
 include("PlantPlotting.jl")
 include("MainPlot.jl")
 include("Buttons.jl")
-include("TablesInterface.jl")
+# include("TablesInterface.jl")
 include("FileIO.jl")
 
 function loaddata(filepath::AbstractString)
@@ -46,7 +50,11 @@ function arrange(plants::AbstractVector{PlantSpecs.Plant}; n_rows=3::Int)
     return staggered
 end
 
-function createplot(filepath::AbstractString, background::AbstractString, scale::Float64)
+function createplot(filepath::AbstractString, background::AbstractString, scale_unitless::Float64)
+    createplot(filepath, background, scale_unitless * u"1.0m")
+end
+
+function createplot(filepath::AbstractString, background::AbstractString, scale::MeterType)
     df = loaddata(filepath)
     plants = [
         PlantSpecs.Plant(row)
@@ -55,16 +63,16 @@ function createplot(filepath::AbstractString, background::AbstractString, scale:
     sort!(plants; by=p -> p.size.width.finish, rev=true)
     img = load(background)
     points = Dict(
-        plant.name => [position]
+        plant.name => Observable([position * u"1.0m"])
         for (plant, position) in zip(plants, arrange(plants))
     )
 
     createplot(img, scale, plants, points)
 end
 
-function createplot(img::Matrix, scale::Number, plants::Vector{PlantSpecs.Plant}, points::Dict{String,<:Vector})
-    @show points
-    forest = AgroForest5(
+function createplot(img::Matrix, scale::MeterType, plants::Vector{PlantSpecs.Plant}, points::Dict{String,<:Observable})
+    @show scale |> typeof
+    forest = AgroForest2(
         img=Observable{}(img),
         scale=Observable{}(scale),
         plants=plants,
@@ -77,8 +85,8 @@ function createplot(img::Matrix, scale::Number, plants::Vector{PlantSpecs.Plant}
     )
     # fig[1, 2] = buttongrid = GridLayout(width=15)
     fig[1, 2] = buttongrid = GridLayout(tellheight=false)
-    scale!(_img, forest.scale[], forest.scale[])
-    limits!(ax, (0, size(forest.img[], 2) * forest.scale[]), (-50, size(forest.img[], 1) * forest.scale[]))
+    scale!(_img, forest.scale[] / u"m", forest.scale[] / u"m")
+    limits!(ax, (0, size(forest.img[], 2) * forest.scale[] / u"m"), (-50, size(forest.img[], 1) * forest.scale[] / u"m"))
     ax.xrectzoom = false
     ax.yrectzoom = false
 
@@ -88,7 +96,7 @@ function createplot(img::Matrix, scale::Number, plants::Vector{PlantSpecs.Plant}
     )
     buttons = makebuttons(forest, buttongrid)
 
-    return fig, forest
+    return fig, forest, dms, buttons
 end
 
 end # module AgroForestry
