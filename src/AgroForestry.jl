@@ -68,15 +68,12 @@ function createplot(filepath::AbstractString, background::AbstractString, scale:
 end
 
 function createplot(img::Matrix, scale::MeterType, plants::Vector{PlantSpecs.Plant})
-    positions = Dict(
-        plant.name => Observable([position * u"m"])
-        for (plant, position) in zip(plants, arrange(plants))
-    )
+
     forest = AgroForest2(
         img=Observable{}(img),
         scale=Observable{}(scale),
         plants=plants,
-        positions=positions,
+        positions=Dict(plant.name => Observable{}(Point2{MeterType}[]) for plant in plants),
     )
     fig = Figure(; size=(1200, 675) ./ 2)
     ax, _img = image(
@@ -94,8 +91,12 @@ function createplot(img::Matrix, scale::MeterType, plants::Vector{PlantSpecs.Pla
         plant.name => linkcontroller!(forest, plant.name)
         for plant in forest.plants
     )
+    menupositions = Dict(
+        plant.name => position
+        for (plant, position) in zip(plants, arrange(plants))
+    )
     viewers = Dict(
-        plant.name => createviewer(forest, fig, ax, controllers[plant.name], plant)
+        plant.name => createviewer(forest, fig, ax, controllers[plant.name], plant, menupositions[plant.name])
         for plant in forest.plants
     )
     buttons = makebuttons(forest, controllers, buttongrid)

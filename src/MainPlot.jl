@@ -32,8 +32,11 @@ function linkcontroller!!(forest::AgroForest2, controller::Controller, plant_nam
     return forest
 end
 
-function createviewer(forest::AgroForest2, fig::Figure, ax::Axis, dm::Controller, plant::PlantSpecs.Plant)
-    points = lift(x -> x / u"m", forest.positions[dm.name])
+function createviewer(forest::AgroForest2, fig::Figure, ax::Axis, dm::Controller, plant::PlantSpecs.Plant, menupoint::Point2)
+    # points::Observable{Vector{Point2f}} = lift(x -> x / u"m", forest.positions[dm.name])
+    points::Observable{Vector{Point2f}} = lift(forest.positions[dm.name]) do poss
+        pushfirst!(lift(x -> x / u"m", poss), menupoint)
+    end
     viewer = Viewer(
         name=dm.name,
         ps=[
@@ -105,18 +108,18 @@ function handlepress(ax::Axis, dm::Controller, v::Viewer, plt::DraggablePlot, i:
         dm.offset = Point2f(0, 0)
         push!(dm.positions[], mouseposition(ax))
         notify(dm.positions)
-        dm.idx = length(dm.positions[])
         @show dm.positions
-        @show v.ps[1].positions
+        @show v.ps[1]
+        dm.idx = length(dm.positions[])
         return Consume(dm.dragging)
     else
         @debug "Initiate drag"
         # Initiate drag
         dm.dragging = plt in v.ps
         if dm.dragging
-            dm.offset = mouseposition(ax) - dm.positions[][i]
+            dm.offset = mouseposition(ax) - dm.positions[][i-1]
         end
-        dm.idx = i
+        dm.idx = i - 1
         return Consume(dm.dragging)
     end
 end
