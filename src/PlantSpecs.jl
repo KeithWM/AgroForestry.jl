@@ -1,14 +1,16 @@
 module PlantSpecs
 SUNOPTIONS = Dict(
-    "Zon, Half-schaduw" => 3 // 4, "Zon" => 1, "Half-schaduw" => 1 // 2, "Shaduw" => 1 // 4
+    "Zon, Half-schaduw" => 3 // 4, "Zon" => 1, "Half-schaduw" => 1 // 2, "Shaduw" => 1 // 4,
+    missing => 1 // 1
 )
-MOISTOPTIONS = Dict("Slecht" => 0, "Goed" => 1)
+MOISTOPTIONS = Dict("Slecht" => 0, "Goed" => 1, missing => 1)
 
 Base.@kwdef struct SizeRange
     start::Float64
     finish::Float64
 end
 Base.convert(::Type{SizeRange}, s::AbstractString) = SizeRange(s)
+Base.convert(::Type{SizeRange}, ::Missing) = SizeRange(5, 10)
 function SizeRange(s::AbstractString)
     sizes = parse.(Float64, split(s, r" ?[-,] ?"))
     return SizeRange(sizes |> first, sizes |> last)
@@ -23,6 +25,7 @@ Base.@kwdef struct MonthRange
     start::Union{Int,Missing}
     finish::Union{Int,Missing}
 end
+MonthRange(::Missing) = MonthRange(missing, missing)
 function MonthRange(s::AbstractString)
     local months
     try

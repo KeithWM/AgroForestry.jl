@@ -38,10 +38,10 @@ include("FileIO.jl")
 
 function loaddata(filepath::AbstractString)
     df = filepath |> CSV.File |> DataFrame
-    return df[1:findfirst(ismissing.(df[!, :Naam]))-1, :]
+    return df
 end
 
-function arrange(plants::AbstractVector{PlantSpecs.Plant}; n_rows=3::Int)
+function arrange(plants::AbstractVector{PlantSpecs.Plant}; n_rows=4::Int)
     n = length(plants)
     n_cols = div(n - 1, n_rows) + 1
     is = mod1.(1:2:2*n, 2 * n_rows - 1)
@@ -59,6 +59,7 @@ function createplot(filepath::AbstractString, background::AbstractString, scale:
     plants = [
         PlantSpecs.Plant(row)
         for row in eachrow(df)
+        if !ismissing(row["Wetenschappelijke naam"]) && !ismissing(row["Number/ha"])
     ]
     sort!(plants; by=p -> p.size.width.finish, rev=true)
     img = load(background)
@@ -85,7 +86,7 @@ function createplot(img::Matrix, scale::MeterType, plants::Vector{PlantSpecs.Pla
     # fig[1, 2] = buttongrid = GridLayout(width=15)
     fig[1, 2] = buttongrid = GridLayout(tellheight=false)
     scale!(_img, forest.scale[] / u"m", forest.scale[] / u"m")
-    limits!(ax, (0, size(forest.img[], 2) * forest.scale[] / u"m"), (-50, size(forest.img[], 1) * forest.scale[] / u"m"))
+    limits!(ax, (0, size(forest.img[], 2) * forest.scale[] / u"m"), (-60, size(forest.img[], 1) * forest.scale[] / u"m"))
     ax.xrectzoom = false
     ax.yrectzoom = false
 
