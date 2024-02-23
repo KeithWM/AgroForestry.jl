@@ -46,7 +46,7 @@ function createviewer(forest::AgroForest2, fig::Figure, ax::Axis, dm::Controller
             text!(
                 points;
                 text=lift(p -> [showname(plant) for _ in p], points),
-                align=(:center, :center), visible=true, fontsize=20,
+                align=(:center, :center), visible=true, fontsize=12,
             ),
         ],
     )

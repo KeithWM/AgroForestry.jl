@@ -19,7 +19,6 @@ function loadforest(forest::AgroForest2, controllers::Dict{String,Controller}, i
         for (plant_name, points) in f["position_points"]
             forest.positions[plant_name][] = points
         end
-        @show forest.positions["Rode Beuk"][]
     end
     for (plant_name, controller) in controllers
         linkcontroller!!(forest, controller, plant_name)

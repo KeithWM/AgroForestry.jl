@@ -2,8 +2,10 @@ GLOWCOLORS = Dict(
     1 => :yellow, 3 // 4 => :orange, 1 // 2 => :red, 0 => :white
 )
 
-function showname(plant::PlantSpecs.Plant)
-    return plant.name
+showname(plant::PlantSpecs.Plant) = showname(plant.latin)
+showname(::Missing) = "MISSING"
+function showname(latin::AbstractString)
+    return join(map(x -> "$(lowercase(x[1:3])).", split(latin, " ")[1:2]), "\n")
 end
 function color(m::PlantSpecs.MonthRange)
     return color(m.start, m.finish)
