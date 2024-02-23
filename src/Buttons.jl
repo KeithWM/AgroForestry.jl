@@ -1,21 +1,17 @@
 function makebuttons(forest::AgroForest2, controllers::Dict{String,Controller}, buttongrid)
-    # buttonlabels = ["Save", "Load"]
-    # n = buttonlabels |> length
-    # buttons = buttongrid[1:2, 1:2] = [
-    #     Button(buttongrid[1, 2]; label="Save"),
-    #     Button(buttongrid[2, 2]; label="Load")
-    # ]
-    savefile = Observable("forest.jld2")
-    loadfile = Observable("forest.jld2")
+    default = "forest.jld2"
+    savefile = Observable(default)
+    loadfile = Observable(default)
     buttons = Dict(
-        "savetext" => Textbox(buttongrid[1, 1]; stored_string=savefile, width=150),
+        "savetext" => Textbox(buttongrid[1, 1]; placeholder=default, width=150),
         "savebutton" => Button(buttongrid[1, 2]; label="Save"),
-        "loadtext" => Textbox(buttongrid[2, 1]; stored_string=loadfile, width=150),
+        "loadtext" => Textbox(buttongrid[2, 1]; placeholder=default, width=150),
         "loadbutton" => Button(buttongrid[2, 2]; label="Load"),
     )
 
     on(buttons["savetext"].stored_string) do s
         savefile[] = s
+        @show savefile
     end
     on(buttons["loadtext"].stored_string) do s
         loadfile[] = s
@@ -27,11 +23,5 @@ function makebuttons(forest::AgroForest2, controllers::Dict{String,Controller}, 
     on(buttons["loadbutton"].clicks) do n
         loadforest(forest, controllers, loadfile[])
     end
-    # for i in 1:n
-    #     on(buttons[i].clicks) do n
-    #         counts[][i] += 1
-    #         notify(counts)
-    #     end
-    # end
-    return nothing
+    return buttons
 end

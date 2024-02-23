@@ -94,7 +94,6 @@ function handlepress(fig::Figure, ax::Axis, dm::Controller, v::Viewer)
     for plt_i in Makie.pick_sorted(Makie.get_scene(fig), events(fig).mouseposition[], 10)
         r = handlepress(ax, dm, v, plt_i...)
         r === nothing || return r
-        @debug "Found nothing"
     end
 end
 handlepress(ax::Axis, dm::Controller, v::Viewer, plt::Any, i::Integer) = nothing

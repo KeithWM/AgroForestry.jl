@@ -46,7 +46,7 @@ function arrange(plants::AbstractVector{PlantSpecs.Plant}; n_rows=4::Int)
     n_cols = div(n - 1, n_rows) + 1
     is = mod1.(1:2:2*n, 2 * n_rows - 1)
     js = div.((1:2:2*n) .- 1, 2 * n_rows - 1) .+ 1
-    staggered = Point2f.(js * 16, -is * 8)
+    staggered = Point2f.(js * 12, -is * 8)
     return staggered
 end
 
@@ -75,7 +75,7 @@ function createplot(img::Matrix, scale::MeterType, plants::Vector{PlantSpecs.Pla
         plants=plants,
         positions=Dict(plant.name => Observable{}(Point2{MeterType}[]) for plant in plants),
     )
-    fig = Figure(; size=(1200, 675) ./ 2)
+    fig = Figure(; size=(1200, 675) .* 2 ./ 3)
     ax, _img = image(
         fig[1, 1], rotr90(forest.img[]),
         axis=(aspect=DataAspect(),)
