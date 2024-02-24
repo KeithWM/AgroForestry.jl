@@ -1,4 +1,5 @@
 function save(forest::AgroForest2, output::AbstractString)
+    @debug "Saving forest to $output"
     position_points = Dict(
         plant_name => positions[]
         for (plant_name, positions) in forest.positions
@@ -12,6 +13,7 @@ function save(forest::AgroForest2, output::AbstractString)
 end
 
 function loadforest!(forest::AgroForest2, controllers::Dict{String,Controller}, input::AbstractString)
+    @debug "Loading forest from $input"
     jldopen(input, "r") do f
         forest.img[] = f["img"]
         forest.scale[] = f["scale"]
@@ -26,6 +28,7 @@ function loadforest!(forest::AgroForest2, controllers::Dict{String,Controller}, 
 end
 
 function replaceimage!(forest::AgroForest2, input::AbstractString)
+    @debug "Replacing background image from $input"
     forest.img[] = load(input)
     notify(forest.img)
 end
