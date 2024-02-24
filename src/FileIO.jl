@@ -11,7 +11,7 @@ function save(forest::AgroForest2, output::AbstractString)
     )
 end
 
-function loadforest(forest::AgroForest2, controllers::Dict{String,Controller}, input::AbstractString)
+function loadforest!(forest::AgroForest2, controllers::Dict{String,Controller}, input::AbstractString)
     jldopen(input, "r") do f
         forest.img[] = f["img"]
         forest.scale[] = f["scale"]
@@ -23,4 +23,9 @@ function loadforest(forest::AgroForest2, controllers::Dict{String,Controller}, i
     for plant in forest.plants
         linkcontroller!!(forest, controllers[plant.name], plant.name)
     end
+end
+
+function replaceimage!(forest::AgroForest2, input::AbstractString)
+    forest.img[] = load(input)
+    notify(forest.img)
 end

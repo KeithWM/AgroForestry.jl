@@ -77,7 +77,7 @@ function createplot(img::Matrix, scale::MeterType, plants::Vector{PlantSpecs.Pla
     )
     fig = Figure(; size=(1200, 675) .* 2 ./ 3)
     ax, _img = image(
-        fig[1, 1], rotr90(forest.img[]),
+        fig[1, 1], lift(i -> rotr90(i), forest.img),
         axis=(aspect=DataAspect(),)
     )
     # fig[1, 2] = buttongrid = GridLayout(width=15)
