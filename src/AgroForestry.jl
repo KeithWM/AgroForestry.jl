@@ -87,6 +87,8 @@ function createplot(img::Matrix, scale::MeterType, plants::Vector{PlantSpecs.Pla
     limits!(ax, (0, size(forest.img[], 2) * forest.scale[] / u"m"), (-60, size(forest.img[], 1) * forest.scale[] / u"m"))
     ax.xrectzoom = false
     ax.yrectzoom = false
+    ax.xzoomlock = true
+    ax.yzoomlock = true
 
     controllers = Dict(
         plant.name => linkcontroller!(forest, plant.name)
