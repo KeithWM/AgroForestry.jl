@@ -17,7 +17,7 @@ mean(sr::PlantSpecs.SizeRange) = (sr.start + sr.finish) / 2
 function makekwargs(plant::PlantSpecs.Plant)
     return Dict(
         :marker => makeshape(plant),
-        :color => color(plant.harvest),
+        :color => (color(plant.harvest), 0.8),
         :strokewidth => mean(plant.size.height) / 10,
         :strokecolor => GLOWCOLORS[plant.sun],
         :markersize => mean(plant.size.width),
