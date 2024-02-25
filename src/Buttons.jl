@@ -24,14 +24,15 @@ function makebuttons(forest::AgroForest2, controllers::Dict{String,Controller}, 
         imagefile[] = s
     end
     on(buttons["savebutton"].clicks) do n
-        @show buttons["savetext"].displayed_string
         Makie.set!(buttons["savetext"], buttons["savetext"].displayed_string[])
         save(forest, savefile[])
     end
     on(buttons["loadbutton"].clicks) do n
+        Makie.set!(buttons["loadtext"], buttons["loadtext"].displayed_string[])
         loadforest!(forest, controllers, loadfile[])
     end
     on(buttons["imagebutton"].clicks) do n
+        Makie.set!(buttons["imagetext"], buttons["imagetext"].displayed_string[])
         replaceimage!(forest, imagefile[])
     end
     return buttons

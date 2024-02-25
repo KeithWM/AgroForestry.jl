@@ -33,6 +33,7 @@ end
 include("PlantPlotting.jl")
 include("MainPlot.jl")
 include("Buttons.jl")
+include("Table.jl")
 # include("TablesInterface.jl")
 include("FileIO.jl")
 
@@ -77,11 +78,11 @@ function createplot(img::Matrix, scale::MeterType, plants::Vector{PlantSpecs.Pla
     )
     fig = Figure(; size=(1200, 675) .* 2 ./ 3)
     ax, _img = image(
-        fig[1, 1], lift(i -> rotr90(i), forest.img),
+        fig[1:2, 1], lift(i -> rotr90(i), forest.img),
         axis=(aspect=DataAspect(),)
     )
-    # fig[1, 2] = buttongrid = GridLayout(width=15)
     fig[1, 2] = buttongrid = GridLayout(tellheight=false)
+    tableaxis = Axis(fig[2, 2])
     scale!(_img, forest.scale[] / u"m", forest.scale[] / u"m")
     limits!(ax, (0, size(forest.img[], 2) * forest.scale[] / u"m"), (-60, size(forest.img[], 1) * forest.scale[] / u"m"))
     ax.xrectzoom = false
@@ -100,6 +101,7 @@ function createplot(img::Matrix, scale::MeterType, plants::Vector{PlantSpecs.Pla
         for plant in forest.plants
     )
     buttons = makebuttons(forest, controllers, buttongrid)
+    table = maketable(forest, tableaxis)
 
     return fig, forest, controllers, viewers, buttons
 end

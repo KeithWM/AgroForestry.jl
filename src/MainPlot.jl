@@ -41,10 +41,11 @@ function createviewer(forest::AgroForest2, fig::Figure, ax::Axis, dm::Controller
         name=dm.name,
         ps=[
             scatter!(
-                points; markerspace=:data, makekwargs(plant)...
+                ax, points;
+                markerspace=:data, makekwargs(plant)...
             ),
             text!(
-                points;
+                ax, points;
                 text=lift(p -> [showname(plant) for _ in p], points),
                 align=(:center, :center), visible=true, fontsize=12,
             ),
